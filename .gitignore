@@ -102,3 +102,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Custom inclusions to gitignore - remove when needed
+old_psbot_code
