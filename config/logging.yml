@@ -1,0 +1,37 @@
+#This file is the logging configuration file I use for logging in the project.
+#More can be added as needed.
+
+version: 1
+disable_existing_loggers: False
+
+formatters:
+  simple:
+    format: '%(asctime)s: %(name)s %(levelname)s: %(message)s'
+    datefmt: '%d/%m %H:%M:%S'
+  detailed:
+    format: '%(asctime)s:%(name)s:%(levelname)s:%(message)s'
+    datefmt: '%Y/%m/%d %H:%M:%S'
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: WARNING
+    formatter: detailed
+    #default stream is sys.stderr
+    #stream: ext://sys.stderr
+
+  debug_fh:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: simple
+    filename: test.log
+
+loggers:
+  test_logger:
+    level: DEBUG
+    handlers: [console, debug_fh]
+    propagate: no
+
+root:
+  level: NOTSET
+  handlers: [console]
