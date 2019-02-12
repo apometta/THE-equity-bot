@@ -21,7 +21,18 @@ def setup_logging():
     throughout the program.  If the logger cannot be created, the root logger
     is still configured.  While this functionality is not optimal - logs will
     not be written to a file - it will not break the program in any part,
-    since named loggers will simply be children of the root logger."""
+    since named loggers will simply be children of the root logger.
+
+    Against some recommendations, loggers are not named after the __name__
+    variable.  Instead, there are a few loggers of interest:
+
+    1. rh_logger: the logger for the Reddit handler.  Debug and higher messages
+                  go to a RotatingFileHandler with a 10kb cap and 1 backup.
+                  Warning and higher messages go to sys.stderr.
+    2. db_logger: the logger for the database handler.  Same as rh_logger, but
+                  5 backups are kept.
+    3. root: only warning messages and higher, sent to the console.  Used
+             only if other loggers cannot be found."""
     #Root logger set up in case we need it
     logging.basicConfig(datefmt="%Y/%m/%d %H:%M:%S",
                     format="%(asctime)s:%(name)s:%(levelname)s:%(message)s")
@@ -63,8 +74,10 @@ def main():
     as needed."""
     #Set ups: Set up Reddit praw instance, subreddit (list), database handler,
     #executable
-    reddit = praw.Reddit('THE-equity-bot')
-
+    #reddit = praw.Reddit('THE-equity-bot')
+    setup_logging()
+    logger = logging.getLogger("rh_logger")
+    logger.info("Logger initiated.")
     #Next: set up stream, check inbox, perform wake-up tests if needed.
 
     #Final: begin monitoring all comments/submissions/messages.  Loop until
