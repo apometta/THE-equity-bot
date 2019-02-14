@@ -31,7 +31,7 @@ def check_exec(clean_dependencies=False):
     :param clean_dependencies: Cleans unneeded dependencies after compilation.
     Does not clean dependencies if the executable is present before running.
     """
-    logger = logging.getLogger("ex_logger." + check_exec.__name__)
+    logger = logging.getLogger("ex_logger")
     try:
         #exit status 0 if file exists, 1 if it does not
         subprocess.run(["test", "-e", HE_EXEC_PATHNAME], check=True)
@@ -60,9 +60,9 @@ def check_exec(clean_dependencies=False):
         except subprocess.CalledProcessError as e:
             #any one of the 3 above commands could have failed
             logger.critical("cannot make holdem-eval executable")
-            logger.critical("command " + e.cmd + " failed with exit status "
-                            + str(e.returncode))
-            logger.critical("trace of stderr: \n" + e.stderr)
+            logger.critical("command {} failed with exit status {!s}".format(
+                e.cmd, e.returncode))
+            logger.critical("trace of stderr: \n{}".format(e.stderr))
             raise ExecError("failed to make executable")
     except:
         logger.critical("Unexpected error when checking executable",
@@ -71,8 +71,17 @@ def check_exec(clean_dependencies=False):
 
 def clean_exec():
     """Run \"make clean\" in executable directory."""
-    pass
-
+    logger = logging.getLogger("ex_logger")
+    try:
+        subprocess.run(["make", "-C", HE_EXEC_DIRNAME, "clean"], check=True,
+                       stderr=subprocess.PIPE)
+        logger.info("executable and dependencies cleaned")
+    except subprocess.CalledProcessError as e:
+        logger.error("cannot clean holdem-eval directory")
+        logger.error("command {} failed with exit status {!s}".format(
+            e.cmd,e.returncode))
+        logger.error("trace of stderr: \n{}".format(e.stderr))
+        raise ExecError("failed to clean executable directory")
 
 if __name__ == "__main__":
     #this "main method" is used for testing the utility.  not to actually be
