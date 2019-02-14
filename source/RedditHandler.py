@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """This file, which can be treated as the "main" file, is the .py responsible
 for interfacing with Reddit for THE-equity-bot.  Written by Andrew H. Pometta.
 As of now, it is solely a skeleton of the project.  """
@@ -31,6 +33,8 @@ def setup_logging():
                   Warning and higher messages go to sys.stderr.
     2. db_logger: the logger for the database handler.  Same as rh_logger, but
                   5 backups are kept.
+    3. ex_logger: no backups are kept, and no messages are printed to the
+                  console.
     3. root: only warning messages and higher, sent to the console.  Used
              only if other loggers cannot be found."""
     #Root logger set up in case we need it
@@ -46,19 +50,24 @@ def setup_logging():
     except OSError as e:
         logging.error("Cannot open logging.yml; using root logger")
     except:
-        logging.error("Unexpected error " + str(sys.exc_info()[0]) +
-                      " configuring logging; using root logger")
+        logging.error("Unexpected error configuring logging; using root "
+                      "logger", exc_info=True)
 
-def print_post(post, debug=False):
-    """To be deprecated."""
+def print_post(post):
+    """Prints a comment or post, with relevant information.  Used for
+    testing, and to be deprecated."""
+    logger = logging.getLogger("rh_logger")
+    logger.debug("Printing post " + str(post))
     if type(post) is not PRAW_COMMENT and type(post) is not PRAW_SUBMISSION:
-        print("Error: post " + str(post) + " is neither comment nor submission.", file=sys.stderr)
+        #str(post) raises no exceptions
+        logger.error("Post " + str(post) + "is neither comment nor "
+                     "submission")
         return
     print("id: " + post.id)
     print("author.name: " + post.author.name)
-    if debug:
-        print("permalink: " + post.permalink)
-        print("created_utc (converted): " + str(datetime.datetime.fromtimestamp(post.created_utc)))
+    logger.debug("permalink: " + post.permalink)
+    logger.debug("created_utc (converted): " +
+                 str(datetime.datetime.fromtimestamp(post.created_utc)))
     if type(post) is PRAW_COMMENT:
         print("body: " + post.body, end="\n\n", flush=True)
     elif type(post) is PRAW_SUBMISSION:
@@ -74,10 +83,15 @@ def main():
     as needed."""
     #Set ups: Set up Reddit praw instance, subreddit (list), database handler,
     #executable
-    #reddit = praw.Reddit('THE-equity-bot')
     setup_logging()
     logger = logging.getLogger("rh_logger")
-    logger.info("Logger initiated.")
+    logger.info("Logging configured and initiated.")
+    reddit = praw.Reddit('THE-equity-bot')
+    logger.info("Reddit instance obtained.")
+
+    comment = reddit.comment('egezxul')
+    print_post(comment)
+    logger.debug("post printed")
     #Next: set up stream, check inbox, perform wake-up tests if needed.
 
     #Final: begin monitoring all comments/submissions/messages.  Loop until
