@@ -21,7 +21,7 @@ handlers:
     #stream: ext://sys.stderr
 
   ex_handler:
-    class:logging.handlers.RotatingFileHandler
+    class: logging.handlers.RotatingFileHandler
     level: DEBUG
     formatter: detailed
     filename: ../logs/ex.log
