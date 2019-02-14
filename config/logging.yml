@@ -20,6 +20,14 @@ handlers:
     #default stream is sys.stderr
     #stream: ext://sys.stderr
 
+  ex_handler:
+    class:logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: ../logs/ex.log
+    maxBytes: 10000
+    #backupCount: 0
+
   rh_handler:
     class: logging.handlers.RotatingFileHandler
     level: DEBUG
@@ -51,6 +59,11 @@ loggers:
   db_logger:
     level: DEBUG
     handlers: [console, db_handler]
+    propagate: no
+
+  ex_logger:
+    level: DEBUG
+    handlers: [ex_handler]
     propagate: no
 
   test_logger:
