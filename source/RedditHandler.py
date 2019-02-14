@@ -16,12 +16,13 @@ PRAW_SUBMISSION = praw.models.reddit.submission.Submission
 CFG_PATH = "../config/" #change to your liking if forked.
 
 def setup_logging():
-    """Set up the logging configuration from the logging YAML file.  This sets
-    up various loggers, by different names with different settings, to be used
-    throughout the program.  If the logger cannot be created, the root logger
-    is still configured.  While this functionality is not optimal - logs will
-    not be written to a file - it will not break the program in any part,
-    since named loggers will simply be children of the root logger.
+    """Set up the logging configuration from the logging YAML file.
+
+    This sets up various loggers, by different names with different settings,
+    to be used throughout the program.  If the logger cannot be created, the
+    root logger is still configured.  While this functionality is not optimal
+    - logs will not be written to a file - it will not break the program in
+    any part, since named loggers will simply be children of the root logger.
 
     Against some recommendations, loggers are not named after the __name__
     variable.  Instead, there are a few loggers of interest:
@@ -34,16 +35,19 @@ def setup_logging():
     3. ex_logger: no backups are kept, and no messages are printed to the
                   console.
     3. root: only warning messages and higher, sent to the console.  Used
-             only if other loggers cannot be found."""
-    #Root logger set up in case we need it
-    logging.basicConfig(datefmt="%Y/%m/%d %H:%M:%S",
-                    format="%(asctime)s:%(name)s:%(levelname)s:%(message)s")
+             only if other loggers cannot be found.
+
+    For testing other modules, this function can be imported on its own to
+    set up logging independently."""
     try:
+        #imported here to export to other modules for testing
         import logging.config
         import yaml
+
         with open(CFG_PATH + "logging.yml", "rt") as log_yaml:
             log_config = yaml.safe_load(log_yaml)
         logging.config.dictConfig(log_config)
+        return
         #gather the logger from wherever you want in the program - it should
         #work with just the right name
     except ImportError as e:
@@ -53,6 +57,14 @@ def setup_logging():
     except:
         logging.error("Unexpected error configuring logging; using root "
                       "logger", exc_info=True)
+    finally:
+        #performed only when an exception occurs, but regardless of which
+        #one occurs
+        #Have to re-import logging to avoid UnboundLocalError
+        import logging
+        #Root logger set up for further use
+        logging.basicConfig(datefmt="%Y/%m/%d %H:%M:%S",
+                   format="%(asctime)s:%(name)s:%(levelname)s:%(message)s")
 
 def print_post(post):
     """Prints a comment or post, with relevant information.  Used for
