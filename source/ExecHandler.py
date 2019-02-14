@@ -80,3 +80,4 @@ if __name__ == "__main__":
     from RedditHandler import setup_logging
     setup_logging()
     check_exec(clean_dependencies=False) #change to True to save a bit of space
+    clean_exec()
