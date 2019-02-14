@@ -44,16 +44,16 @@ def setup_logging():
         import logging.config
         import yaml
 
-        with open(CFG_PATH + "logging.yml", "rt") as log_yaml:
+        with open("{}logging.yml".format(CFG_PATH), "rt") as log_yaml:
             log_config = yaml.safe_load(log_yaml)
         logging.config.dictConfig(log_config)
         return
         #gather the logger from wherever you want in the program - it should
         #work with just the right name
     except ImportError as e:
-        logging.error("ImportError " + e.message + ": using root logger")
+        logging.error("ImportError {}: using root logger".format(e.message))
     except OSError as e:
-        logging.error("OSError " + e.message + ": using root logger")
+        logging.error("OSError {}: using root logger".format(e.message))
     except:
         logging.error("Unexpected error configuring logging; using root "
                       "logger", exc_info=True)
@@ -70,24 +70,23 @@ def print_post(post):
     """Prints a comment or post, with relevant information.  Used for
     testing, and to be deprecated."""
     logger = logging.getLogger("rh_logger")
-    logger.debug("Printing post " + str(post))
+    logger.debug("Printing post {!s}".format(post))
     if type(post) is not PRAW_COMMENT and type(post) is not PRAW_SUBMISSION:
         #str(post) raises no exceptions
-        logger.error("Post " + str(post) + "is neither comment nor "
-                     "submission")
+        logger.error("Post {} is neither comment nor submission".format(post))
         return
-    print("id: " + post.id)
-    print("author.name: " + post.author.name)
-    logger.debug("permalink: " + post.permalink)
-    logger.debug("created_utc (converted): " +
-                 str(datetime.datetime.fromtimestamp(post.created_utc)))
+    print("id: {}".format(post.id))
+    print("author.name: {}".format(post.author.name))
+    logger.debug("permalink: {}".format(post.permalink))
+    logger.debug("created_utc (converted): {}".format(
+        str(datetime.datetime.fromtimestamp(post.created_utc))))
     if type(post) is PRAW_COMMENT:
-        print("body: " + post.body, end="\n\n", flush=True)
+        print("body: {}".format(post.body), end="\n\n", flush=True)
     elif type(post) is PRAW_SUBMISSION:
         if post.is_self:
-            print("selftext: " + post.selftext, flush=True)
+            print("selftext: {}".format(post.selftext), flush=True)
         else:
-            print("url: " + post.url, flush=True)
+            print("url: {}".format(post.url), flush=True)
 
 def main():
     """The main function of THE-equity-bot, it instantiates everything and
