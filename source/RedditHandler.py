@@ -9,8 +9,6 @@ import time
 import praw
 import sys
 import logging
-import logging.config
-import yaml
 
 #de facto constants
 PRAW_COMMENT = praw.models.reddit.comment.Comment
@@ -41,14 +39,17 @@ def setup_logging():
     logging.basicConfig(datefmt="%Y/%m/%d %H:%M:%S",
                     format="%(asctime)s:%(name)s:%(levelname)s:%(message)s")
     try:
+        import logging.config
+        import yaml
         with open(CFG_PATH + "logging.yml", "rt") as log_yaml:
             log_config = yaml.safe_load(log_yaml)
         logging.config.dictConfig(log_config)
         #gather the logger from wherever you want in the program - it should
         #work with just the right name
-        return
+    except ImportError as e:
+        logging.error("ImportError " + e.message + ": using root logger")
     except OSError as e:
-        logging.error("Cannot open logging.yml; using root logger")
+        logging.error("OSError " + e.message + ": using root logger")
     except:
         logging.error("Unexpected error configuring logging; using root "
                       "logger", exc_info=True)
