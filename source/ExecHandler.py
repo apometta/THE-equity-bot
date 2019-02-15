@@ -16,7 +16,15 @@ HE_EXEC_PATHNAME = HE_EXEC_DIRNAME + HE_EXEC_FILENAME
 MAKEFILE_PATHNAME = HE_EXEC_DIRNAME + "Makefile"
 
 class ExecError(Exception):
-    """Custom class for errors when handling executables."""
+    """Custom class for errors when handling the executable."""
+    pass
+
+class ExecAccessError(ExecError):
+    """Custom class for errors when the executable cannot be accessed."""
+    pass
+
+class ExecRunError(ExecError):
+    """Custom class for errors when the executable returns an error."""
     pass
 
 def check_exec(clean_dependencies=False):
@@ -40,11 +48,12 @@ def check_exec(clean_dependencies=False):
         #exec not found: attempt to make
         #make sure Makefile is present first
         try:
+            logger.debug("holdem-eval exec not found: making")
             subprocess.run(["test", "-e", MAKEFILE_PATHNAME], check=True)
             logger.debug("Makefile found")
         except subprocess.CalledProcessError:
             logger.critical("Neither holdem-eval exec nor Makefile found")
-            raise ExecError("Makefile not found in expected directory")
+            raise ExecAccessError("Makefile not found in expected directory")
         try:
             #Makefile found
             subprocess.run(["make", "-C", HE_EXEC_DIRNAME],
@@ -63,7 +72,7 @@ def check_exec(clean_dependencies=False):
             logger.critical("command {} failed with exit status {!s}".format(
                 e.cmd, e.returncode))
             logger.critical("trace of stderr: \n{}".format(e.stderr))
-            raise ExecError("failed to make executable")
+            raise ExecAccessError("failed to make executable")
     except:
         logger.critical("Unexpected error when checking executable",
                         exc_info=True)
@@ -82,6 +91,52 @@ def clean_exec():
             e.cmd,e.returncode))
         logger.error("trace of stderr: \n{}".format(e.stderr))
         raise ExecError("failed to clean executable directory")
+    except:
+        logger.error("Unexpected error when cleaning executable",
+                     exc_info=True)
+        raise ExecAccessError("Unexpected error when checking executable")
+
+def run_exec(range_1, range_2, *args, **kwargs):
+    """Function for running the holdem-eval executable.
+
+    This function is responsible for, given known arguments and options,
+    running the holdem-eval executable and returning the result as a
+    dictionary, containing the ranges and tuples corresponding to a string
+    representing the range, the equity in the given calculation, and optionally
+    the percentage of hands that that range represents.
+
+    The function takes in a minimum of two ranges, represented as strings.  The
+    strings can be classic Pokserstove style strings or percentages - they are
+    passed in the function the very same.  It can take up to 6 ranges: if more
+    than 6 ranges are input, the function raises an exception.
+
+    The rest of the keyword-indexed arguments serve as options to the
+    executable.  They are as follows:
+
+    :param monte_carlo: enables monte_carlo enumeration (--mc).  Note: while
+    the executable has this off by default, calling this function without
+    specifying this will result in it being enabled.  Set to false to disable.
+    :param board: String corresponding to the board cards (-b).  Default
+    empty.
+    :param dead: String corresponding to the dead cards (-d).  Default empty.
+    :param error: Margin of error for monte-carlo enumeration (-e).  Default
+    1e-4, or 0.001%.  If monte_carlo is false, this does nothing.
+    :param time: Maximum time for simulation (-t).  Note: while the default
+    time of the executable is 30 seconds, this function uses 15 seconds as the
+    default if not specified.
+
+    :return The return value of the function is a dictionary.  The dictionary
+    contains keys and values as follows:
+    time: integer corresponding to the time of the simulation.
+    range_1, range_2 [range_3... range_6]: tuple of (range string, equity).
+    The range string is the string corresponding to the range, and the equity
+    is the floating point number representing the equity in the simulation.
+
+    If the functions arguments are immediately recognizable as false (too few
+    or too many ranges), the function raises an ExecError.  Otherwise, if the
+    equity simulation returns some failure or cannot complete the simulation
+    in time, the function raises an ExecRunError."""
+    pass
 
 if __name__ == "__main__":
     #this "main method" is used for testing the utility.  not to actually be
@@ -89,4 +144,3 @@ if __name__ == "__main__":
     from RedditHandler import setup_logging
     setup_logging()
     check_exec(clean_dependencies=False) #change to True to save a bit of space
-    clean_exec()
