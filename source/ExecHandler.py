@@ -96,7 +96,7 @@ def clean_exec():
                      exc_info=True)
         raise ExecAccessError("Unexpected error when checking executable")
 
-def run_exec(range_1, range_2, *args, **kwargs):
+def run_exec(ranges, **kwargs):
     """Function for running the holdem-eval executable.
 
     This function is responsible for, given known arguments and options,
@@ -105,10 +105,12 @@ def run_exec(range_1, range_2, *args, **kwargs):
     representing the range, the equity in the given calculation, and optionally
     the percentage of hands that that range represents.
 
-    The function takes in a minimum of two ranges, represented as strings.  The
-    strings can be classic Pokserstove style strings or percentages - they are
-    passed in the function the very same.  It can take up to 6 ranges: if more
-    than 6 ranges are input, the function raises an exception.
+    The function takes in a list of ranges, which must be at least 2 and no
+    more than 6.  If the list of arguments is invalid, an ExecError is
+    returned.  An ExecRunError (child of ExecError) is returned if the
+    executable returns an error.  Note that this is not returned if the
+    executable runs out of time but has no other errors.  The range list is a
+    list of strings, to be passed directly into the executable.
 
     The rest of the keyword-indexed arguments serve as options to the
     executable.  They are as follows:
@@ -125,17 +127,9 @@ def run_exec(range_1, range_2, *args, **kwargs):
     time of the executable is 30 seconds, this function uses 15 seconds as the
     default if not specified.
 
-    :return The return value of the function is a dictionary.  The dictionary
-    contains keys and values as follows:
-    time: integer corresponding to the time of the simulation.
-    range_1, range_2 [range_3... range_6]: tuple of (range string, equity).
-    The range string is the string corresponding to the range, and the equity
-    is the floating point number representing the equity in the simulation.
-
-    If the functions arguments are immediately recognizable as false (too few
-    or too many ranges), the function raises an ExecError.  Otherwise, if the
-    equity simulation returns some failure or cannot complete the simulation
-    in time, the function raises an ExecRunError."""
+    :return The function returns a pair.  The first element is True if the
+    executable completed in time and False if it did not.  The second is
+    a list of pairs, corresponding to the range strings and their equities."""
     pass
 
 if __name__ == "__main__":
