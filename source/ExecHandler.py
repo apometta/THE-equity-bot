@@ -24,8 +24,14 @@ class ExecAccessError(ExecError):
     pass
 
 class ExecRunError(ExecError):
-    """Custom class for errors when the executable returns an error."""
-    pass
+    """Custom class for errors when the executable returns an error.
+
+    This exception also contains the exit status of the ran executable.
+    Useful for printing custom exceptions."""
+    def __init__(self, message, errcode):
+        super().__init__(message)
+        self.errcode = errcode #error code of the executable
+
 
 def check_exec(clean_dependencies=False):
     """Ensure holdem-eval executable is present in target directory.
@@ -68,9 +74,9 @@ def check_exec(clean_dependencies=False):
                 subprocess.run(["test", "-e", HE_EXEC_PATHNAME], check=True)
         except subprocess.CalledProcessError as e:
             #any one of the 3 above commands could have failed
-            logger.critical("cannot make holdem-eval executable")
-            logger.critical("command {} failed with exit status {!s}".format(
-                e.cmd, e.returncode))
+            logger.critical("cannot make holdem-eval executable: "
+                            "command {} failed with exit status {!s}"
+                            .format(e.cmd, e.returncode))
             logger.critical("trace of stderr: \n{}".format(e.stderr))
             raise ExecAccessError("failed to make executable")
     except:
@@ -86,10 +92,9 @@ def clean_exec():
                        stderr=subprocess.PIPE)
         logger.info("executable and dependencies cleaned")
     except subprocess.CalledProcessError as e:
-        logger.error("cannot clean holdem-eval directory")
-        logger.error("command {} failed with exit status {!s}".format(
-            e.cmd,e.returncode))
-        logger.error("trace of stderr: \n{}".format(e.stderr))
+        logger.error("cannot clean holdem-eval directory: command {} failed "
+                     "with exit status {!s}".format(e.cmd, e.returncode))
+        logger.debug("trace of stderr: \n{}".format(e.stderr))
         raise ExecError("failed to clean executable directory")
     except:
         logger.error("Unexpected error when cleaning executable",
@@ -105,12 +110,12 @@ def run_exec(ranges, **kwargs):
     representing the range, the equity in the given calculation, and optionally
     the percentage of hands that that range represents.
 
-    The function takes in a list of ranges, which must be at least 2 and no
-    more than 6.  If the list of arguments is invalid, an ExecError is
-    returned.  An ExecRunError (child of ExecError) is returned if the
-    executable returns an error.  Note that this is not returned if the
-    executable runs out of time but has no other errors.  The range list is a
-    list of strings, to be passed directly into the executable.
+    The function takes in a list or set of ranges of length between 2 and 6
+    inclusive, in addition to keyword arguments that represent options.  If
+    ranges has a different length than specified above, or is not a set or
+    list, it is invalid and an ExecError is raised.  Otherwise, if the
+    executable proper is run but returns an error, an ExecRunError is raised.
+    An ExecRunError is NOT raised when the executable runs out of time.
 
     The rest of the keyword-indexed arguments serve as options to the
     executable.  They are as follows:
@@ -130,11 +135,102 @@ def run_exec(ranges, **kwargs):
     :return The function returns a pair.  The first element is True if the
     executable completed in time and False if it did not.  The second is
     a list of pairs, corresponding to the range strings and their equities."""
-    pass
+    #Check immediately if the range list is of the appropriate size.
+    logger = logging.getLogger("ex_logger")
+    if not type(ranges) is list and not type(ranges) is set:
+        logger.error("ranges not list or set")
+        logger.debug("ranges: {!s}".format(ranges))
+        raise ExecError("ranges not list or set")
+    elif len(ranges) < 2:
+        logger.error("less than 2 ranges specified")
+        logger.debug("ranges: {!s}".format(ranges))
+        raise ExecError("ranges too short")
+    elif len(ranges) > 6:
+        logger.error("more than 6 ranges specified")
+        logger.debug("ranges: {!s}".format(ranges))
+        raise ExecError("ranges too long")
+    #make sure each range is a string
+    for r in ranges:
+        #note: in Python 3, all strings are unicode
+        if not type(r) is str:
+            logger.error("ranges contains non-string element")
+            logger.debug("element in question: {!s}, ranges: {!s}"
+                         .format(r, ranges))
+            raise ExecError("ranges contains non-string element")
+        #Check if strings are multiple words - complain if they are
+        r = r.strip()
+        if " " in r or "\n" in r or "\t" in r:
+            logger.error("ranges contains multple-word argument \"{}\""
+                         .format(r))
+            raise ExecError("ranges contains multiple-word argument \"{}\""
+                            .format(r))
+
+    #check kwargs for options.  exec_call is the list for the shell command
+    exec_call = [HE_EXEC_PATHNAME, "--format"]
+    if "board" in kwargs:
+        exec_call += ["-b", str(kwargs.pop("board"))]
+    if "dead" in kwargs:
+        exec_call += ["-d", str(kwargs.pop("dead"))]
+    #monte_carlo is on by default in our program, but not the executable
+    if not "monte_carlo" in kwargs or kwargs.pop("monte_carlo"):
+        exec_call += ["--mc"]
+    if "error" in kwargs:
+        exec_call += ["-e", str(kwargs.pop("error"))]
+    #holdem-eval default time is 30, but we want our default time to be
+    #15 and overwritable
+    if not "time" in kwargs:
+        exec_call += ["-t", "15"]
+    else:
+        exec_call += ["-t", str(kwargs.pop("time"))]
+    #kwargs should be empty at this point
+    for key in kwargs:
+        logger.warning("unrecognized option {!s} in check_exec (value: {!s})"
+                       .format(key, kwargs[key]))
+    exec_call += ranges #append ranges
+    logger.debug("exec_call: {!s}".format(exec_call))
+
+    #call the executable
+    try:
+        equity = subprocess.run(exec_call, check=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        stderr = e.stderr.decode("utf-8") #e.stderr is bytes object by default
+        error = stderr[stderr.rindex(':')+1:].strip()
+        logger.error("executable failed with error code {!s} and error "
+                     "message \"{!s}\"".format(e.returncode, error))
+        raise ExecRunError(error, e.returncode)
+    except:
+        logger.error("unexpected error when calling executable", exc_info=True)
+
+    #equity contains output from program
+    output_lines = equity.stdout.decode("utf-8").splitlines()
+    logger.debug("output_lines: {!s}".format(output_lines))
+    success = int(output_lines[0]) == 0
+    results = output_lines[1:output_lines.index("")]
+    equities = []
+    for range in results:
+        range_str = range[:range.index(':')].strip()
+        #a mouthful of a line: everything after the colon, removed of
+        #whitespace and % signs, then divided by 100
+        equity = float(range[range.index(':')+1:].strip().strip('%')) / 100
+        equities.append((range_str, equity))
+
+    logger.debug("{!s}".format((success, equities)))
+    return success, equities
 
 if __name__ == "__main__":
     #this "main method" is used for testing the utility.  not to actually be
     #used.  it is never run when the file is exported
     from RedditHandler import setup_logging
     setup_logging()
-    check_exec(clean_dependencies=False) #change to True to save a bit of space
+    logger = logging.getLogger("ex_logger")
+    check_exec(clean_dependencies=True)
+    ranges = ["AA", "KK QQ JJ TT 99"]
+    try:
+        run_exec(ranges)
+    except ExecRunError as e:
+        logger.debug("Message: {!s}\nReturn code: {!s}".format(e, e.errcode))
+    except ExecError as e:
+        logger.debug("ExecError: {!s}".format(e))
+    except:
+        logger.debug("Unexpected exception in run_exec", exc_info=True)
