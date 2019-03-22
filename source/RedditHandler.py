@@ -72,7 +72,6 @@ def print_post(post):
     logger = logging.getLogger("rh_logger")
     logger.debug("Printing post {!s}".format(post))
     if type(post) is not PRAW_COMMENT and type(post) is not PRAW_SUBMISSION:
-        #str(post) raises no exceptions
         logger.error("Post {} is neither comment nor submission".format(post))
         return
     print("id: {}".format(post.id))

@@ -1,0 +1,3 @@
+[submodule "source/holdem-eval"]
+	path = source/holdem-eval
+	url = https://github.com/apometta/holdem-eval.git
