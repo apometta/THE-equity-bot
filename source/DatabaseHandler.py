@@ -27,7 +27,10 @@ DB_DIRNAME = "./"
 DB_FILENAME = "test.db" #change for production code
 DB_PATHNAME = DB_DIRNAME + DB_FILENAME
 
-con = sqlite3.connect(DB_PATHNAME)
+try:
+    con = sqlite3.connect(DB_PATHNAME)
+except sqlite3.OperationalError as e:
+    raise DatabaseError(e)
 
 def create_tables():
     """Create the necessary tables if they don't exist yet.
@@ -35,15 +38,20 @@ def create_tables():
     Returns true if they were created, false if they were not because they
     already existed.  If some other error occurs, except."""
 
+    cur = con.cursor()
+    logger = logging.getLogger("db_logger")
     #For the "comments seen" table.  We don't expect to use the M value,
     #since that corresponds to a message from our inbox which will be tracked
     #separately.  However, we may comapre this table to another table with
     #requests, which will contain this.
+
+    #Also note: booleans are just 1-byte numbers in sqlite.  We have to enforce
+    #0 and 1 ourselves, even with the declaration.
     create_post_table_command = """
     CREATE TABLE posts(
         ID VARCHAR(16) PRIMARY KEY,
-        PostType CHAR CHECK(PostType in ("P", "C", "M"))
-        Request BOOLEAN
+        PostType CHAR CHECK(PostType in ("P", "C", "M")),
+        HasRequest BOOLEAN CHECK(HasRequest IN (0,1))
     );
     """
 
@@ -53,10 +61,54 @@ def create_tables():
     except sqlite3.OperationalError as e:
         if str(e).endswith("already exists"):
             #The table already exists - just ignore error and return false
+            logger.info("posts seen table already exists")
             return False
         #Legitimate error with SQL
+        logger.critical("could not create database table (and not already "
+                        "created)")
+        raise DatabaseError("could not create database table")
+    except:
+        logger.critical("unexpected error when creating database table",
+                        exc_info=True)
+        raise DatabaseError("could not create database table")
+    logger.info("posts seen table created")
+    return True
 
+def check_post_seen(post_id):
+    """Checks if the post, given an ID, is in the "already seen" database.
+
+    Returns true if it is, false if it is not."""
+
+    cur = con.cursor()
+    logger = logging.getLogger("db_logger")
+    search_id_command = "SELECT * FROM t WHERE ID=?"
+    try:
+        cur.execute(search_id_command, (post_id,))
+        row = cur.fetchone()
+        if not row:
+            logger.debug("post {} not seen in posts table".format(post_id))
+            #It is not the job of this function to insert the post into the
+            #database, only to check if it exists
+            return False
+        logger.debug("post {} seen in posts table".format(post_id))
+        #check for duplicates
+        row = cur.fetchone()
+        if row:
+            logger.warning("duplicate entry {} in posts table".format(post_id))
+        return True
+    except sqlite3.OperationalError as e:
+        logger.error("unexpected error checking posts table: {!s}".format(e))
+        raise DatabaseError(e)
+    except:
+        logger.critical("unexpected error checking posts table", exc_info=True)
+        raise DatabaseError("unexpected error checking posts table")
 
 if __name__ == "__main__":
+    """While intended to be imported, if run as a standalone
+    program, this module will run maintenance on the database and perform
+    testing."""
     from RedditHandler import setup_logging
     setup_logging()
+    cur = con.cursor()
+    logger = logging.getLogger("db_logger")
+    
