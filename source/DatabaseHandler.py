@@ -10,7 +10,7 @@ the database in THE-equity-bot.  The database contains multiple tables:
               way to store this information.  Messages may also be stored in
               here at a future time, so "M" is supported, but should not be
               stored in here as of now.
-    Request: A boolean, true if containing a request and false if not.
+    HasRequest: A boolean, true if containing a request and false if not.
 
 2. A table containing advanced data about those posts which do contain
    requests (to be implemented.)
@@ -61,7 +61,7 @@ def create_tables():
     except sqlite3.OperationalError as e:
         if str(e).endswith("already exists"):
             #The table already exists - just ignore error and return false
-            logger.info("posts seen table already exists")
+            logger.debug("posts seen table already exists")
             return False
         #Legitimate error with SQL
         logger.critical("could not create database table (and not already "
@@ -71,7 +71,7 @@ def create_tables():
         logger.critical("unexpected error when creating database table",
                         exc_info=True)
         raise DatabaseError("could not create database table")
-    logger.info("posts seen table created")
+    logger.debug("posts seen table created")
     return True
 
 def check_post_seen(post_id):
@@ -81,7 +81,7 @@ def check_post_seen(post_id):
 
     cur = con.cursor()
     logger = logging.getLogger("db_logger")
-    search_id_command = "SELECT * FROM t WHERE ID=?"
+    search_id_command = "SELECT * FROM posts WHERE ID=?"
     try:
         cur.execute(search_id_command, (post_id,))
         row = cur.fetchone()
@@ -96,9 +96,48 @@ def check_post_seen(post_id):
         if row:
             logger.warning("duplicate entry {} in posts table".format(post_id))
         return True
-    except sqlite3.OperationalError as e:
-        logger.error("unexpected error checking posts table: {!s}".format(e))
-        raise DatabaseError(e)
+    except:
+        logger.critical("unexpected error checking posts table", exc_info=True)
+        raise DatabaseError("unexpected error checking posts table")
+
+def insert_post(post_id, post_type, has_request):
+    """Inserts an entry into the posts table.  post_id is the post ID,
+    post_type is a single char of value 'P', 'C' or 'M' for posts, comments
+    and messages respectively.  has_request is a boolean that is True when
+    the post has a request for the bot.
+
+    Returns nothing."""
+
+    cur = con.cursor()
+    logger = logging.getLogger("db_logger")
+
+    #check that values are within expected boundaries
+    if post_id is not str:
+        logger.error("post_id not string (string conversion: {!s})"
+                     .format(post_id))
+        raise DatabaseError("post_id not string")
+    if post_type not in ('P', 'C', 'M'):
+        logger.error("invalid post_type {!s}".format(post_type))
+        logger.debug("couldn't insert post with post id {}".format(post_id))
+        raise DatabaseError("invalid post_type {!s}".format(post_type))
+
+    #sqlite has no boolean datatype: we simply reinterpret the boolean as
+    #either 0 or 1.  Nonetheless, the boolean type is forced here to ensure
+    #that the argument is passed with the proper intent.
+    if has_request is not bool:
+        logger.error("has_request not a boolean")
+        logger.debug("couldn't insert post with post id {}".format(post_id))
+        raise DatabaseError("has_request is not a boolean")
+
+    insert_args = (post_id, post_type, int(has_request))
+    insert_id_command = "INSERT INTO posts VALUES (?, ?, ?);"
+    try:
+        cur.execute(insert_id_command, insert_args)
+    except sqlite3.IntegrityError as e:
+        #Occurrs when non-unique ID is to be inserted
+        logger.error("attempted to insert previously seen id {}"
+                     .format(post_id))
+        raise DatabaseError("post id {} not unique".format(post_id))
     except:
         logger.critical("unexpected error checking posts table", exc_info=True)
         raise DatabaseError("unexpected error checking posts table")
@@ -107,8 +146,8 @@ if __name__ == "__main__":
     """While intended to be imported, if run as a standalone
     program, this module will run maintenance on the database and perform
     testing."""
+
     from RedditHandler import setup_logging
     setup_logging()
-    cur = con.cursor()
     logger = logging.getLogger("db_logger")
-    
+    create_tables()
