@@ -112,9 +112,10 @@ def insert_post(post_id, post_type, has_request):
     logger = logging.getLogger("db_logger")
 
     #check that values are within expected boundaries
-    if post_id is not str:
+    if type(post_id) is not str:
         logger.error("post_id not string (string conversion: {!s})"
                      .format(post_id))
+        logger.debug("post_id is {!s}".format(type(post_id)))
         raise DatabaseError("post_id not string")
     if post_type not in ('P', 'C', 'M'):
         logger.error("invalid post_type {!s}".format(post_type))
@@ -124,7 +125,7 @@ def insert_post(post_id, post_type, has_request):
     #sqlite has no boolean datatype: we simply reinterpret the boolean as
     #either 0 or 1.  Nonetheless, the boolean type is forced here to ensure
     #that the argument is passed with the proper intent.
-    if has_request is not bool:
+    if type(has_request) is not bool:
         logger.error("has_request not a boolean")
         logger.debug("couldn't insert post with post id {}".format(post_id))
         raise DatabaseError("has_request is not a boolean")
@@ -133,6 +134,7 @@ def insert_post(post_id, post_type, has_request):
     insert_id_command = "INSERT INTO posts VALUES (?, ?, ?);"
     try:
         cur.execute(insert_id_command, insert_args)
+        con.commit()
     except sqlite3.IntegrityError as e:
         #Occurrs when non-unique ID is to be inserted
         logger.error("attempted to insert previously seen id {}"
