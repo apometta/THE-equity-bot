@@ -1,5 +1,6 @@
-#Custom addition to gitignore - the archive folder is a folder containing the old code of this project before being revamped
+#Custom additions to gitignore
 archive/
+acc.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
