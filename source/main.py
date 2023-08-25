@@ -17,14 +17,31 @@ reddit = praw.Reddit(
 def comment_reply(content):
     # first, prune ranges
     words = content.split()  # across newlines, tabs and spaces
-    ranges = []
+    ranges, opts = [], []  # separate list references
     for i in words:
         if "/u/" in i:
             continue  # skip the actual mention of the bot
-        ranges.append(i)
+        if ':' in i:
+            opts.append(i)
+        else:
+            ranges.append(i)
 
+    if len(ranges) == 0:
+        return "help message"
     # run program and receive output.
     command_str = "holdem-eval/holdem-eval"
+
+    for i in opts:
+        pre, post = i.split(':')
+        if len(pre) == 0 or len(post) == 0:
+            return "invalid option"
+        if pre[0] == 'b':
+            command_str += " -b " + post
+        elif pre[0] == 'd':
+            command_str += " -d " + post
+        else:
+            return "invalid option"
+
     for r in ranges:
         command_str += ' ' + r
     os.system(command_str + " 1>o.txt 2>e.txt")
