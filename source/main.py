@@ -30,6 +30,7 @@ def comment_reply(content):
         return "help message"
     # run program and receive output.
     command_str = "holdem-eval/holdem-eval"
+    mc = False  # monte carlo simulation
 
     for i in opts:
         pre, post = i.split(':')
@@ -44,10 +45,18 @@ def comment_reply(content):
 
     for r in ranges:
         command_str += ' ' + r
-    os.system(command_str + " 1>o.txt 2>e.txt")
+
+    os.system(command_str + " -t 3 1>o.txt 2>e.txt")
     f = open("o.txt", 'r')
     output = f.read()
     f.close()
+
+    if output[-5:-1] == "--mc":  # timed out calculation
+        os.system(command_str + " --mc -t 5 1>o.txt 2>e.txt")
+        f = open("o.txt", 'r')
+        output = f.read()
+        f.close()
+        mc = True
 
     # parse output
     if len(output) <= 1:  # there was an error piped to e.txt
@@ -59,6 +68,8 @@ def comment_reply(content):
         player, eq = i.split(':')
         player, eq = player.strip(), eq.strip()
         reply_str += player + '|' + eq + '\n'
+    if mc:
+        reply_str += "Monte Carlo"
     return reply_str
 
 
