@@ -46,7 +46,15 @@ def comment_reply(content):
     for r in ranges:
         command_str += ' ' + r
 
-    os.system(command_str + " -t 3 1>o.txt 2>e.txt")
+    res = os.system(command_str + " -t 3 1>o.txt 2>e.txt")
+    if res > 0:  # some error occurred
+        if res == 8:
+            return "range conflict"  # fix later
+        else:
+            f = open("e.txt", 'r')
+            stderr = f.read()
+            f.close()
+            return stderr.split(':')[-1]
     f = open("o.txt", 'r')
     output = f.read()
     f.close()
