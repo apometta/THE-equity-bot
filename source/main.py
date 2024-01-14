@@ -77,7 +77,7 @@ def comment_reply(content):
         player, eq = player.strip(), eq.strip()
         reply_str += player + '|' + eq + '\n'
     if mc:
-        reply_str += "Monte Carlo"
+        reply += "**Note:** original calculation timed out: Monte Carlo simulation used instead.**"
     return reply_str
 
 
