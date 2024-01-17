@@ -7,6 +7,7 @@ Some of these tasks might be diverted into different files later.
 
 import praw
 import os
+from time import sleep
 
 reddit = praw.Reddit(
     "equitybot", user_agent="script:equitybot:v0.2 (Andrew H. Pometta)")
@@ -18,16 +19,21 @@ def comment_reply(content):
     # first, prune ranges
     words = content.split()  # across newlines, tabs and spaces
     ranges, opts = [], []  # separate list references
-    for i in words:
-        if "/u/" in i:
-            continue  # skip the actual mention of the bot
-        if ':' in i:
-            opts.append(i)
+    i = 0
+    while i < len(words) and "/u/" not in words[i]:
+        i += 1  # skip everything before the mention
+
+    while i < len(words):
+        if "/u/" in words[i]:
+            pass  # skip the actual mention of the bot
+        elif ':' in words[i]:
+            opts.append(words[i])
         else:
-            ranges.append(i)
+            ranges.append(words[i])
+        i += 1
 
     if len(ranges) == 0:
-        return "help message"
+        return "No ranges specified."
     # run program and receive output.
     command_str = "holdem-eval/holdem-eval"
     mc = False  # monte carlo simulation
@@ -77,12 +83,12 @@ def comment_reply(content):
         player, eq = player.strip(), eq.strip()
         reply_str += player + '|' + eq + '\n'
     if mc:
-        reply += "**Note:** original calculation timed out: Monte Carlo simulation used instead.**"
+        reply_str += "**Note:** original calculation timed out: Monte Carlo simulation used instead."
     return reply_str
 
 
 def perform_some_action():
-    sleep(5)
+    sleep(3)
 
 done = False
 while not done:  # main progrm infinite loop
@@ -90,10 +96,7 @@ while not done:  # main progrm infinite loop
         if not i.new:
             break  # ignore read messages
         i.mark_read()
-        if i.author.name != "bromeatmeco":
-            continue  # while testing the bot, it will only reply to my queries
+        # if i.author.name != "bromeatmeco":
+        # continue  # while testing the bot, it will only reply to my queries
         i.reply(comment_reply(i.body))
-
-    print("Performed cycle")
-    # perform_some_action()  # to avoid querying API too much
-    done = True  # while testing, we will only run the bot once instead of continually checking
+    perform_some_action()  # to avoid querying API too much
