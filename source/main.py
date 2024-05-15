@@ -13,6 +13,39 @@ reddit = praw.Reddit(
     "equitybot", user_agent="script:equitybot:v0.2 (Andrew H. Pometta)")
 
 
+#This function takes in a list of strings, running it through the bot and returning 
+#a pair: the first element is the string output of the bot, and the second is 
+#a boolean if monte carlo evaluation was used
+def evaluate_range(inputs):
+    command_str = "holdem-eval/holdem-eval"
+    mc = False  # monte carlo simulation
+    for r in inputs:
+        command_str += ' ' + r
+
+    res = os.system(command_str + " -t 3 1>o.txt 2>e.txt")
+    if res > 0:  # some error occurred
+        if res == 8:
+            return ("range conflict", False)
+        else:
+            f = open("e.txt", 'r')
+            stderr = f.read()
+            f.close()
+            return (stderr.split(':')[-1], False)
+    f = open("o.txt", 'r')
+    output = f.read()
+    f.close()
+
+    if output[-5:-1] == "--mc":  # timed out calculation
+        os.system(command_str + " --mc -t 5 1>o.txt 2>e.txt")
+        f = open("o.txt", 'r')
+        output = f.read()
+        f.close()
+        mc = True
+
+    return (output, mc)
+
+
+
 # This function will almost certainly be split across multiple later to
 # flesh out error checking, timing for large queries, etc.
 def comment_reply(content):
@@ -35,8 +68,6 @@ def comment_reply(content):
     if len(ranges) == 0:
         return "No ranges specified."
     # run program and receive output.
-    command_str = "holdem-eval/holdem-eval"
-    mc = False  # monte carlo simulation
 
     for i in opts:
         pre, post = i.split(':')
@@ -49,28 +80,7 @@ def comment_reply(content):
         else:
             return "invalid option"
 
-    for r in ranges:
-        command_str += ' ' + r
-
-    res = os.system(command_str + " -t 3 1>o.txt 2>e.txt")
-    if res > 0:  # some error occurred
-        if res == 8:
-            return "range conflict"  # fix later
-        else:
-            f = open("e.txt", 'r')
-            stderr = f.read()
-            f.close()
-            return stderr.split(':')[-1]
-    f = open("o.txt", 'r')
-    output = f.read()
-    f.close()
-
-    if output[-5:-1] == "--mc":  # timed out calculation
-        os.system(command_str + " --mc -t 5 1>o.txt 2>e.txt")
-        f = open("o.txt", 'r')
-        output = f.read()
-        f.close()
-        mc = True
+    output, mc = evaluate_range(ranges)
 
     # parse output
     if len(output) <= 1:  # there was an error piped to e.txt
